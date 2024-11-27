@@ -8,6 +8,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip"
 import { Input } from "./ui/input"
 import { useRouter, usePathname } from "next/navigation"
 import { useState } from "react"
+import { DownloadAllMenu } from "./download-all-menu"
 
 export function Navbar() {
   const router = useRouter()
@@ -59,6 +60,8 @@ export function Navbar() {
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-foreground" />
             )}
           </div>
+          
+          <DownloadAllMenu />
           
           <Tooltip>
             <TooltipTrigger asChild>
