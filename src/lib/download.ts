@@ -1,5 +1,6 @@
 import { ChatTab } from "@/types/workspace"
 import { marked } from 'marked'
+import JSZip from 'jszip'
 
 export function convertChatToMarkdown(tab: ChatTab): string {
   let markdown = `# ${tab.title || `Chat ${tab.id}`}\n\n`
@@ -43,72 +44,23 @@ export function downloadMarkdown(tab: ChatTab) {
 
 export function downloadHTML(tab: ChatTab) {
   const markdown = convertChatToMarkdown(tab)
-  const htmlContent = marked(markdown)
-  
-  const html = `
+  const html = marked(markdown)
+  const fullHtml = `
     <!DOCTYPE html>
     <html>
-    <head>
-      <meta charset="UTF-8">
-      <title>${tab.title || `Chat ${tab.id}`}</title>
-      <style>
-        body {
-          max-width: 800px;
-          margin: 40px auto;
-          padding: 0 20px;
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-          line-height: 1.6;
-          color: #333;
-        }
-        pre {
-          background: #f5f5f5;
-          padding: 1em;
-          overflow-x: auto;
-          border-radius: 4px;
-          border: 1px solid #ddd;
-        }
-        code {
-          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-          font-size: 0.9em;
-        }
-        hr {
-          border: none;
-          border-top: 1px solid #ddd;
-          margin: 2em 0;
-        }
-        h1, h2, h3 {
-          margin-top: 2em;
-          margin-bottom: 1em;
-        }
-        blockquote {
-          border-left: 4px solid #ddd;
-          margin: 0;
-          padding-left: 1em;
-          color: #666;
-        }
-        @media (prefers-color-scheme: dark) {
-          body {
-            background: #1a1a1a;
-            color: #ddd;
-          }
-          pre {
-            background: #2d2d2d;
-            border-color: #404040;
-          }
-          blockquote {
-            border-color: #404040;
-            color: #999;
-          }
-        }
-      </style>
-    </head>
-    <body>
-      ${htmlContent}
-    </body>
+      <head>
+        <meta charset="utf-8">
+        <title>${tab.title || `Chat ${tab.id}`}</title>
+        <style>
+          body { font-family: system-ui, sans-serif; max-width: 800px; margin: 0 auto; padding: 2rem; }
+          pre { background: #f6f8fa; padding: 1rem; border-radius: 6px; overflow-x: auto; }
+          hr { border: 0; border-top: 1px solid #eaecef; margin: 2rem 0; }
+        </style>
+      </head>
+      <body>${html}</body>
     </html>
   `
-  
-  const blob = new Blob([html], { type: 'text/html' })
+  const blob = new Blob([fullHtml], { type: 'text/html' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
@@ -119,36 +71,98 @@ export function downloadHTML(tab: ChatTab) {
   URL.revokeObjectURL(url)
 }
 
-export async function downloadPDF(tab: ChatTab) {
+export function downloadPDF(tab: ChatTab) {
+  const markdown = convertChatToMarkdown(tab)
+  const html = marked(markdown)
+  const style = `
+    <style>
+      body { font-family: system-ui, sans-serif; max-width: 800px; margin: 0 auto; padding: 2rem; }
+      pre { background: #f6f8fa; padding: 1rem; border-radius: 6px; overflow-x: auto; }
+      hr { border: 0; border-top: 1px solid #eaecef; margin: 2rem 0; }
+    </style>
+  `
+  const printWindow = window.open('', '', 'width=800,height=600')
+  if (printWindow) {
+    printWindow.document.write(style + html)
+    printWindow.document.close()
+    printWindow.focus()
+    setTimeout(() => {
+      printWindow.print()
+      printWindow.close()
+    }, 250)
+  }
+}
+
+export async function downloadAllAsZip(format: 'markdown' | 'html' | 'pdf') {
   try {
-    const markdown = convertChatToMarkdown(tab)
-    const response = await fetch('/api/generate-pdf', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        markdown,
-        title: tab.title || `Chat ${tab.id}`
-      }),
-    })
-
-    if (!response.ok) {
-      throw new Error('Failed to generate PDF')
+    console.log('Fetching all workspaces...')
+    const response = await fetch('/api/workspaces')
+    const workspaces = await response.json()
+    console.log(`Found ${workspaces.length} workspaces to process`)
+    
+    const zip = new JSZip()
+    let totalFiles = 0
+    
+    for (const [index, workspace] of workspaces.entries()) {
+      console.log(`Processing workspace ${index + 1}/${workspaces.length}: ${workspace.id}`)
+      const tabsResponse = await fetch(`/api/workspaces/${workspace.id}/tabs`)
+      const { tabs, composers } = await tabsResponse.json()
+      
+      if (tabs?.length > 0) {
+        console.log(`Found ${tabs.length} chat logs in workspace ${workspace.id}`)
+        const wsFolder = zip.folder(workspace.id)
+        if (!wsFolder) continue
+        
+        for (const [tabIndex, tab] of tabs.entries()) {
+          const content = format === 'markdown' 
+            ? convertChatToMarkdown(tab)
+            : format === 'html' 
+              ? marked(convertChatToMarkdown(tab))
+              : convertChatToMarkdown(tab) // PDF not supported in zip, fallback to markdown
+              
+          const extension = format === 'html' ? 'html' : 'md'
+          const fileName = `${tab.title || `chat-${tab.id}`}.${extension}`
+          
+          if (format === 'html') {
+            const fullHtml = `
+              <!DOCTYPE html>
+              <html>
+                <head>
+                  <meta charset="utf-8">
+                  <title>${tab.title || `Chat ${tab.id}`}</title>
+                  <style>
+                    body { font-family: system-ui, sans-serif; max-width: 800px; margin: 0 auto; padding: 2rem; }
+                    pre { background: #f6f8fa; padding: 1rem; border-radius: 6px; overflow-x: auto; }
+                    hr { border: 0; border-top: 1px solid #eaecef; margin: 2rem 0; }
+                  </style>
+                </head>
+                <body>${content}</body>
+              </html>
+            `
+            wsFolder.file(fileName, fullHtml)
+          } else {
+            wsFolder.file(fileName, content)
+          }
+          totalFiles++
+          console.log(`Added file ${tabIndex + 1}/${tabs.length}: ${fileName}`)
+        }
+      }
     }
-
-    const blob = await response.blob()
+    
+    console.log(`Generating zip file with ${totalFiles} files...`)
+    const blob = await zip.generateAsync({ type: 'blob' })
+    console.log('Zip file generated, initiating download...')
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `${tab.title || `chat-${tab.id}`}.pdf`
+    a.download = `cursor-logs.${format === 'html' ? 'html' : 'md'}.zip`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
+    console.log('Download complete!')
   } catch (error) {
-    console.error('Failed to download PDF:', error)
-    alert('Failed to generate PDF. This feature is not yet implemented.')
+    console.error('Failed to download all logs:', error)
   }
 }
 
