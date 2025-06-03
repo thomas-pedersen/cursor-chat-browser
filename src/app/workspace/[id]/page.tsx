@@ -120,7 +120,7 @@ export default function WorkspacePage({ params }: { params: { id: string } }) {
               id: selectedComposer.composerId,
               title: selectedComposer.text || 'Untitled',
               timestamp: new Date(selectedComposer.lastUpdatedAt || selectedComposer.createdAt).toISOString(),
-              bubbles: selectedComposer.conversation.map(msg => ({
+              bubbles: (selectedComposer.conversation ?? []).map(msg => ({
                 type: msg.type === 1 ? 'user' : 'ai',
                 text: msg.text,
                 modelType: msg.type === 2 ? 'Composer Assistant' : undefined,
