@@ -8,14 +8,14 @@ import { AlertCircle } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { expandTildePath } from "@/utils/path"
 
-// Function to detect OS and WSL
-async function detectEnvironment(): Promise<{ os: string, isWSL: boolean }> {
+// Function to detect OS, WSL and remote SSH
+async function detectEnvironment(): Promise<{ os: string, isWSL: boolean, isRemote: boolean }> {
   try {
     const response = await fetch('/api/detect-environment')
     return await response.json()
   } catch (error) {
     console.error('Failed to detect environment:', error)
-    return { os: 'unknown', isWSL: false }
+    return { os: 'unknown', isWSL: false, isRemote: false }
   }
 }
 
@@ -50,7 +50,7 @@ export default function ConfigPage() {
       }
 
       // Detect environment and set path
-      const { os, isWSL } = await detectEnvironment()
+      const { os, isWSL, isRemote } = await detectEnvironment()
       const detectedUsername = await getWindowsUsername()
       let detectedPath = ''
       
@@ -61,7 +61,11 @@ export default function ConfigPage() {
       } else if (os === 'darwin') {
         detectedPath = '~/Library/Application Support/Cursor/User/workspaceStorage'
       } else if (os === 'linux') {
-        detectedPath = '~/.config/Cursor/User/workspaceStorage'
+        if (isRemote) {
+          detectedPath = '~/.cursor-server/data/User/workspaceStorage'
+        } else {
+          detectedPath = '~/.config/Cursor/User/workspaceStorage'
+        }
       }
 
       // Try to validate the detected path
