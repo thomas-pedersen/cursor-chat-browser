@@ -5,13 +5,14 @@ import fs from 'fs/promises'
 import sqlite3 from 'sqlite3'
 import { open } from 'sqlite'
 import { ComposerChat, ComposerData } from '@/types/workspace'
+import { resolveWorkspacePath } from '@/utils/workspace-path'
 
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
-    const workspacePath = process.env.WORKSPACE_PATH || ''
+    const workspacePath = resolveWorkspacePath()
     const entries = await fs.readdir(workspacePath, { withFileTypes: true })
     
     for (const entry of entries) {

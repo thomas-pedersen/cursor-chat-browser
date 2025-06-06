@@ -4,10 +4,11 @@ import fs from 'fs/promises'
 import sqlite3 from 'sqlite3'
 import { open } from 'sqlite'
 import { existsSync } from 'fs'
+import { resolveWorkspacePath } from '@/utils/workspace-path'
 
 export async function GET() {
   try {
-    const workspacePath = process.env.WORKSPACE_PATH || ''
+    const workspacePath = resolveWorkspacePath()
     const workspaces = []
     
     const entries = await fs.readdir(workspacePath, { withFileTypes: true })

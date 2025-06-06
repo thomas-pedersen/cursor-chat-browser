@@ -3,6 +3,7 @@ import path from 'path'
 import sqlite3 from 'sqlite3'
 import { open } from 'sqlite'
 import { ChatBubble, ChatTab, ComposerData } from "@/types/workspace"
+import { resolveWorkspacePath } from '@/utils/workspace-path'
 
 interface RawTab {
   tabId: string;
@@ -28,7 +29,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const workspacePath = process.env.WORKSPACE_PATH || ''
+    const workspacePath = resolveWorkspacePath()
     const dbPath = path.join(workspacePath, params.id, 'state.vscdb')
 
     const db = await open({

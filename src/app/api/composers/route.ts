@@ -5,10 +5,11 @@ import { existsSync } from 'fs'
 import sqlite3 from 'sqlite3'
 import { open } from 'sqlite'
 import { ComposerChat, ComposerData } from '@/types/workspace'
+import { resolveWorkspacePath } from '@/utils/workspace-path'
 
 export async function GET() {
   try {
-    const workspacePath = process.env.WORKSPACE_PATH || ''
+    const workspacePath = resolveWorkspacePath()
     const composers = []
     
     const entries = await fs.readdir(workspacePath, { withFileTypes: true })

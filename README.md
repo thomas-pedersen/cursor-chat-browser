@@ -50,6 +50,7 @@ The application automatically detects your Cursor workspace storage location bas
 - WSL2: `/mnt/c/Users/<USERNAME>/AppData/Roaming/Cursor/User/workspaceStorage`
 - macOS: `~/Library/Application Support/Cursor/User/workspaceStorage`
 - Linux: `~/.config/Cursor/User/workspaceStorage`
+- Linux (remote/SSH): `~/.cursor-server/data/User/workspaceStorage`
 
 If automatic detection fails, you can manually set the path in the Configuration page (⚙️).
 

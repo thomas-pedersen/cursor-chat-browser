@@ -4,6 +4,7 @@ import fs from 'fs/promises'
 import { existsSync } from 'fs'
 import sqlite3 from 'sqlite3'
 import { open } from 'sqlite'
+import { resolveWorkspacePath } from '@/utils/workspace-path'
 
 export async function GET(request: Request) {
   try {
@@ -15,7 +16,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'No search query provided' }, { status: 400 })
     }
 
-    const workspacePath = process.env.WORKSPACE_PATH || ''
+    const workspacePath = resolveWorkspacePath()
     const results = []
     const entries = await fs.readdir(workspacePath, { withFileTypes: true })
 

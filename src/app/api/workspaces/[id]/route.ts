@@ -2,13 +2,14 @@ import { NextResponse } from "next/server"
 import path from 'path'
 import fs from 'fs/promises'
 import { existsSync } from 'fs'
+import { resolveWorkspacePath } from '@/utils/workspace-path'
 
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
-    const workspacePath = process.env.WORKSPACE_PATH || ''
+    const workspacePath = resolveWorkspacePath()
     const dbPath = path.join(workspacePath, params.id, 'state.vscdb')
     const workspaceJsonPath = path.join(workspacePath, params.id, 'workspace.json')
 
