@@ -2,8 +2,7 @@ import { NextResponse } from 'next/server'
 import path from 'path'
 import { existsSync } from 'fs'
 import fs from 'fs/promises'
-import sqlite3 from 'sqlite3'
-import { open } from 'sqlite'
+import Database from 'better-sqlite3'
 import { ComposerChat, ComposerData } from '@/types/workspace'
 import { resolveWorkspacePath } from '@/utils/workspace-path'
 
@@ -21,20 +20,15 @@ export async function GET(
         
         if (!existsSync(dbPath)) continue
         
-        const db = await open({
-          filename: dbPath,
-          driver: sqlite3.Database
-        })
-        
-        const result = await db.get(`
+        const db = new Database(dbPath, { readonly: true })
+        const result = db.prepare(`
           SELECT value FROM ItemTable 
           WHERE [key] = 'composer.composerData'
-        `)
+        `).get()
+        db.close()
         
-        await db.close()
-        
-        if (result?.value) {
-          const composerData = JSON.parse(result.value) as ComposerData
+        if (result && (result as any).value) {
+          const composerData = JSON.parse((result as any).value) as ComposerData
           const composer = composerData.allComposers.find(
             (c: ComposerChat) => c.composerId === params.id
           )

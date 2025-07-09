@@ -2,8 +2,7 @@ import { NextResponse } from 'next/server'
 import path from 'path'
 import fs from 'fs/promises'
 import { existsSync } from 'fs'
-import sqlite3 from 'sqlite3'
-import { open } from 'sqlite'
+import Database from 'better-sqlite3'
 import { resolveWorkspacePath } from '@/utils/workspace-path'
 
 export async function GET(request: Request) {
@@ -36,20 +35,17 @@ export async function GET(request: Request) {
         }
 
         try {
-          const db = await open({
-            filename: dbPath,
-            driver: sqlite3.Database
-          })
+          const db = new Database(dbPath, { readonly: true })
 
           // Search chat logs if type is 'all' or 'chat'
           if (type === 'all' || type === 'chat') {
-            const chatResult = await db.get(`
+            const chatResult = db.prepare(`
               SELECT value FROM ItemTable 
               WHERE [key] = 'workbench.panel.aichat.view.aichat.chatdata'
-            `)
+            `).get()
 
-            if (chatResult?.value) {
-              const chatData = JSON.parse(chatResult.value)
+            if (chatResult && (chatResult as any).value) {
+              const chatData = JSON.parse((chatResult as any).value)
               for (const tab of chatData.tabs) {
                 let hasMatch = false
                 let matchingText = ''
@@ -86,13 +82,13 @@ export async function GET(request: Request) {
 
           // Search composer logs if type is 'all' or 'composer'
           if (type === 'all' || type === 'composer') {
-            const composerResult = await db.get(`
+            const composerResult = db.prepare(`
               SELECT value FROM ItemTable 
               WHERE [key] = 'composer.composerData'
-            `)
+            `).get()
 
-            if (composerResult?.value) {
-              const composerData = JSON.parse(composerResult.value)
+            if (composerResult && (composerResult as any).value) {
+              const composerData = JSON.parse((composerResult as any).value)
               for (const composer of composerData.allComposers) {
                 let hasMatch = false
                 let matchingText = ''
@@ -129,7 +125,7 @@ export async function GET(request: Request) {
             }
           }
 
-          await db.close()
+          db.close()
         } catch (error) {
           console.error(`Error processing workspace ${entry.name}:`, error)
         }

@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server"
 import path from 'path'
 import fs from 'fs/promises'
-import sqlite3 from 'sqlite3'
-import { open } from 'sqlite'
+import Database from 'better-sqlite3'
 import { existsSync } from 'fs'
 import { resolveWorkspacePath } from '@/utils/workspace-path'
 
@@ -26,21 +25,18 @@ export async function GET() {
         
         try {
           const stats = await fs.stat(dbPath)
-          const db = await open({
-            filename: dbPath,
-            driver: sqlite3.Database
-          })
-          
-          const result = await db.get(`
+          const db = new Database(dbPath, { readonly: true })
+          const result = db.prepare(`
             SELECT value FROM ItemTable 
             WHERE [key] IN ('workbench.panel.aichat.view.aichat.chatdata')
-          `)
+          `).get()
+          db.close()
           
           // Parse the chat data and count tabs
           let chatCount = 0
-          if (result?.value) {
+          if (result && (result as any).value) {
             try {
-              const chatData = JSON.parse(result.value)
+              const chatData = JSON.parse((result as any).value)
               chatCount = chatData.tabs?.length || 0
             } catch (error) {
               console.error('Error parsing chat data:', error)
@@ -64,7 +60,6 @@ export async function GET() {
             chatCount: chatCount
           })
           
-          await db.close()
         } catch (error) {
           console.error(`Error processing workspace ${entry.name}:`, error)
         }

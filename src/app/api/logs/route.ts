@@ -2,8 +2,7 @@ import { NextResponse } from 'next/server'
 import path from 'path'
 import fs from 'fs/promises'
 import { existsSync } from 'fs'
-import sqlite3 from 'sqlite3'
-import { open } from 'sqlite'
+import Database from 'better-sqlite3'
 import { resolveWorkspacePath } from '@/utils/workspace-path'
 import { ChatTab, ComposerChat } from '@/types/workspace'
 
@@ -39,19 +38,16 @@ export async function GET() {
           console.log(`No workspace.json found for ${entry.name}`)
         }
 
-        const db = await open({
-          filename: dbPath,
-          driver: sqlite3.Database
-        })
+        const db = new Database(dbPath, { readonly: true })
 
         // Get chat logs
-        const chatResult = await db.get(`
+        const chatResult = db.prepare(`
           SELECT value FROM ItemTable 
           WHERE [key] = 'workbench.panel.aichat.view.aichat.chatdata'
-        `)
+        `).get()
 
-        if (chatResult?.value) {
-          const chatData = JSON.parse(chatResult.value)
+        if (chatResult && (chatResult as any).value) {
+          const chatData = JSON.parse((chatResult as any).value)
           if (chatData.tabs && Array.isArray(chatData.tabs)) {
             const chatLogs = chatData.tabs.map((tab: ChatTab) => ({
               id: tab.id || '',
@@ -67,13 +63,13 @@ export async function GET() {
         }
 
         // Get composer logs
-        const composerResult = await db.get(`
+        const composerResult = db.prepare(`
           SELECT value FROM ItemTable 
           WHERE [key] = 'composer.composerData'
-        `)
+        `).get()
 
-        if (composerResult?.value) {
-          const composerData = JSON.parse(composerResult.value)
+        if (composerResult && (composerResult as any).value) {
+          const composerData = JSON.parse((composerResult as any).value)
           if (composerData.allComposers && Array.isArray(composerData.allComposers)) {
             const composerLogs = composerData.allComposers.map((composer: ComposerChat) => ({
               id: composer.composerId || '',
@@ -88,7 +84,7 @@ export async function GET() {
           }
         }
 
-        await db.close()
+        db.close()
       }
     }
 

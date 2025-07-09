@@ -2,8 +2,7 @@ import { NextResponse } from 'next/server'
 import path from 'path'
 import fs from 'fs/promises'
 import { existsSync } from 'fs'
-import sqlite3 from 'sqlite3'
-import { open } from 'sqlite'
+import Database from 'better-sqlite3'
 import { ComposerChat, ComposerData } from '@/types/workspace'
 import { resolveWorkspacePath } from '@/utils/workspace-path'
 
@@ -30,18 +29,15 @@ export async function GET() {
           console.log(`No workspace.json found for ${entry.name}`)
         }
         
-        const db = await open({
-          filename: dbPath,
-          driver: sqlite3.Database
-        })
-        
-        const result = await db.get(`
+        const db = new Database(dbPath, { readonly: true })
+        const result = db.prepare(`
           SELECT value FROM ItemTable 
           WHERE [key] = 'composer.composerData'
-        `)
+        `).get()
+        db.close()
         
-        if (result?.value) {
-          const composerData = JSON.parse(result.value) as ComposerData
+        if (result && (result as any).value) {
+          const composerData = JSON.parse((result as any).value) as ComposerData
           // Add workspace info to each composer and ensure conversation exists
           const composersWithWorkspace = composerData.allComposers.map(composer => ({
             ...composer,
@@ -52,7 +48,6 @@ export async function GET() {
           composers.push(...composersWithWorkspace)
         }
         
-        await db.close()
       }
     }
 

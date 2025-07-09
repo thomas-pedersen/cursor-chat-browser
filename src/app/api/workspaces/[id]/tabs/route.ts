@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
 import path from 'path'
-import sqlite3 from 'sqlite3'
-import { open } from 'sqlite'
+import Database from 'better-sqlite3'
 import { ChatBubble, ChatTab, ComposerData } from "@/types/workspace"
 import { resolveWorkspacePath } from '@/utils/workspace-path'
 
@@ -32,22 +31,16 @@ export async function GET(
     const workspacePath = resolveWorkspacePath()
     const dbPath = path.join(workspacePath, params.id, 'state.vscdb')
 
-    const db = await open({
-      filename: dbPath,
-      driver: sqlite3.Database
-    })
-
-    const chatResult = await db.get(`
+    const db = new Database(dbPath, { readonly: true })
+    const chatResult = db.prepare(`
       SELECT value FROM ItemTable
       WHERE [key] = 'workbench.panel.aichat.view.aichat.chatdata'
-    `)
-
-    const composerResult = await db.get(`
+    `).get()
+    const composerResult = db.prepare(`
       SELECT value FROM ItemTable
       WHERE [key] = 'composer.composerData'
-    `)
-
-    await db.close()
+    `).get()
+    db.close()
 
     if (!chatResult && !composerResult) {
       return NextResponse.json({ error: 'No chat data found' }, { status: 404 })
@@ -56,7 +49,7 @@ export async function GET(
     const response: { tabs: ChatTab[], composers?: ComposerData } = { tabs: [] }
 
     if (chatResult) {
-      const chatData = JSON.parse(chatResult.value)
+      const chatData = JSON.parse((chatResult as any).value)
       response.tabs = chatData.tabs.map((tab: RawTab) => ({
         id: tab.tabId,
         title: tab.chatTitle?.split('\n')[0] || `Chat ${tab.tabId.slice(0, 8)}`,
@@ -67,24 +60,19 @@ export async function GET(
 
     if (composerResult) {
       const globalDbPath = path.join(workspacePath, '..', 'globalStorage', 'state.vscdb')
-      const composers: ComposerData = JSON.parse(composerResult.value)
+      const composers: ComposerData = JSON.parse((composerResult as any).value)
       const keys = composers.allComposers.map((it) => `composerData:${it.composerId}`)
       const placeholders = keys.map(() => '?').join(',')
 
-      const globalDb = await open({
-        filename: globalDbPath,
-        driver: sqlite3.Database
-      })
-
-      const composersBodyResult = await globalDb.all(`
+      const globalDb = new Database(globalDbPath, { readonly: true })
+      const composersBodyResult = globalDb.prepare(`
         SELECT value FROM cursorDiskKV
         WHERE [key] in (${placeholders})
-      `, keys)
-
-      await globalDb.close()
+      `).all(...keys)
+      globalDb.close()
 
       if (composersBodyResult) {
-        composers.allComposers = composersBodyResult.map((it) => JSON.parse(it.value))
+        composers.allComposers = composersBodyResult.map((it: any) => JSON.parse(it.value))
         response.composers = composers
       }
     }
