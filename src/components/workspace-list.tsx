@@ -1,9 +1,8 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { format } from "date-fns"
-import { Workspace } from "@/types/workspace"
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { format } from 'date-fns'
+import Link from 'next/link'
 import {
   Table,
   TableBody,
@@ -13,108 +12,162 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Loading } from "@/components/ui/loading"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Info } from "lucide-react"
 
-interface WorkspaceWithCounts extends Workspace {
-  composerCount: number;
+interface Project {
+  id: string;
+  name: string;
+  path?: string;
+  conversationCount: number;
+  lastModified: string;
 }
 
 export function WorkspaceList() {
-  const [workspaces, setWorkspaces] = useState<WorkspaceWithCounts[]>([])
-  const [loading, setLoading] = useState(true)
-  const router = useRouter()
+  const [projects, setProjects] = useState<Project[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    const fetchWorkspaces = async () => {
+    const fetchProjects = async () => {
       try {
         const response = await fetch('/api/workspaces')
         const data = await response.json()
-        
-        // Fetch composer counts for each workspace
-        const workspacesWithCounts = await Promise.all(
-          data.map(async (workspace: Workspace) => {
-            const tabsRes = await fetch(`/api/workspaces/${workspace.id}/tabs`)
-            const tabsData = await tabsRes.json()
-            const composerCount = tabsData.composers?.allComposers?.length || 0
-            return {
-              ...workspace,
-              composerCount
-            }
-          })
-        )
-        
-        setWorkspaces(workspacesWithCounts)
+        setProjects(data || [])
       } catch (error) {
-        console.error('Failed to fetch workspaces:', error)
+        console.error('Failed to fetch projects:', error)
+        setProjects([])
       } finally {
-        setLoading(false)
+        setIsLoading(false)
       }
     }
-
-    fetchWorkspaces()
+    fetchProjects()
   }, [])
 
-  const handleWorkspaceClick = (workspaceId: string) => {
-    router.push(`/workspace/${workspaceId}`)
+  if (isLoading) {
+    return <Loading message="Loading projects..." />
   }
 
-  if (loading) {
-    return <Loading message="Loading workspaces..." />
-  }
+  const projectsWithConversations = projects.filter(project => project.conversationCount > 0)
+  const projectsWithoutConversations = projects.filter(project => project.conversationCount === 0)
 
   return (
-    <div className="rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Workspace Hash</TableHead>
-            <TableHead>Folder</TableHead>
-            <TableHead>Last Modified</TableHead>
-            <TableHead className="text-right">Ask Logs</TableHead>
-            <TableHead className="text-right">Agent Logs</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {workspaces
-            .sort((a, b) => new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime())
-            .filter(workspace => workspace.chatCount > 0 || workspace.composerCount > 0)
-            .map((workspace) => (
-              <TableRow key={workspace.id} className="hover:bg-accent/50">
-                <TableCell>
-                  <button 
-                    onClick={() => handleWorkspaceClick(workspace.id)}
-                    className="text-blue-600 hover:underline font-medium"
-                  >
-                    {workspace.id}
-                  </button>
-                </TableCell>
-                <TableCell>
-                  {workspace.folder ? (
-                    <div className="flex items-start space-x-2">
-                      <span className="text-gray-500 mt-1">📁</span>
-                      <span 
-                        className="break-all text-sm"
-                        title={workspace.folder}
+    <div className="space-y-8">
+      {/* Projects with conversations */}
+      {projectsWithConversations.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Projects with Conversations</CardTitle>
+            <CardDescription>
+              {projectsWithConversations.length} project{projectsWithConversations.length !== 1 ? 's' : ''} with chat history
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Project</TableHead>
+                  <TableHead>Conversations</TableHead>
+                  <TableHead>Last Modified</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {projectsWithConversations.map((project) => (
+                  <TableRow key={project.id} className="hover:bg-accent/50">
+                    <TableCell>
+                      <Link 
+                        href={`/workspace/${project.id}`}
+                        className="text-blue-600 hover:underline font-medium"
                       >
-                        {workspace.folder}
+                        {project.name}
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-green-600 font-medium">
+                        {project.conversationCount} conversation{project.conversationCount !== 1 ? 's' : ''}
                       </span>
-                    </div>
-                  ) : (
-                    <span className="text-gray-400 italic">No folder</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {format(new Date(workspace.lastModified), 'PPP p')}
-                </TableCell>
-                <TableCell className="text-right">
-                  {workspace.chatCount}
-                </TableCell>
-                <TableCell className="text-right">
-                  {workspace.composerCount}
-                </TableCell>
-              </TableRow>
-            ))}
-        </TableBody>
-      </Table>
+                    </TableCell>
+                    <TableCell>
+                      {format(new Date(project.lastModified), 'PPp')}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Projects without conversations */}
+      {projectsWithoutConversations.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Projects without Conversations</CardTitle>
+            <CardDescription>
+              {projectsWithoutConversations.length} project{projectsWithoutConversations.length !== 1 ? 's' : ''} with no chat history found
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Alert className="mb-4">
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                These projects may appear empty due to folder relocation, Cursor updates, or conversations being stored in a different location. 
+                You can still click on a project to check if there are any legacy conversations available.
+              </AlertDescription>
+            </Alert>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Project</TableHead>
+                  <TableHead>Conversations</TableHead>
+                  <TableHead>Last Modified</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {projectsWithoutConversations.map((project) => (
+                  <TableRow key={project.id} className="hover:bg-accent/50">
+                    <TableCell>
+                      <Link 
+                        href={`/workspace/${project.id}`}
+                        className="text-blue-600 hover:underline font-medium"
+                      >
+                        {project.name}
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-gray-400">0</span>
+                    </TableCell>
+                    <TableCell>
+                      {format(new Date(project.lastModified), 'PPp')}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* No projects found */}
+      {projects.length === 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>No Projects Found</CardTitle>
+            <CardDescription>
+              No Cursor workspace projects were found in the configured location.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                This could be due to an incorrect workspace path configuration or no Cursor projects being available. 
+                Check the configuration page to verify your Cursor workspace storage location.
+              </AlertDescription>
+            </Alert>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 } 

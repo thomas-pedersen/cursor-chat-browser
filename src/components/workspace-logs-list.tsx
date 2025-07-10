@@ -48,6 +48,10 @@ export function WorkspaceLogsList() {
     return <Loading message="Loading logs..." />
   }
 
+  // Separate global logs and workspace logs
+  const globalLogs = logs.filter(log => log.workspaceId === 'global')
+  const workspaceLogs = logs.filter(log => log.workspaceId !== 'global')
+
   return (
     <Table>
       <TableHeader>
@@ -60,7 +64,55 @@ export function WorkspaceLogsList() {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {logs.map((log) => (
+        {/* Global Storage logs */}
+        {globalLogs.length > 0 && (
+          <>
+            <TableRow>
+              <TableCell colSpan={5} className="bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-200 font-semibold text-center">
+                🌐 Global Storage (Newer Cursor chats)
+              </TableCell>
+            </TableRow>
+            {globalLogs.map((log) => (
+              <TableRow key={`global-${log.id}`} className="hover:bg-accent/50">
+                <TableCell>
+                  <Link 
+                    href={`/workspace/global?tab=${log.id}&type=chat`}
+                    className="text-blue-600 hover:underline font-medium"
+                  >
+                    {log.title}
+                  </Link>
+                </TableCell>
+                <TableCell>
+                  <Badge variant="default">Ask Log</Badge>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-start space-x-2">
+                    <span className="text-blue-500 mt-1">🌐</span>
+                    <span className="break-all text-sm text-blue-600">
+                      Global Storage
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  {format(new Date(log.timestamp), 'PPp')}
+                </TableCell>
+                <TableCell className="text-right">
+                  {log.messageCount}
+                </TableCell>
+              </TableRow>
+            ))}
+            {/* Visual separator */}
+            {workspaceLogs.length > 0 && (
+              <TableRow>
+                <TableCell colSpan={5} className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-center">
+                  Workspace Storage (Older Cursor chats)
+                </TableCell>
+              </TableRow>
+            )}
+          </>
+        )}
+        {/* Workspace logs */}
+        {workspaceLogs.map((log) => (
           <TableRow key={`${log.type}-${log.id}`} className="hover:bg-accent/50">
             <TableCell>
               <Link 
@@ -94,7 +146,8 @@ export function WorkspaceLogsList() {
               {format(new Date(log.timestamp), 'PPp')}
             </TableCell>
             <TableCell className="text-right">
-              {log.messageCount}
+              {/* Fix composer message count */}
+              {log.type === 'composer' && (log as any).messageCount === 0 && (log as any).conversation ? (log as any).conversation.length : log.messageCount}
             </TableCell>
           </TableRow>
         ))}

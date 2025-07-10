@@ -7,15 +7,7 @@ export function convertChatToMarkdown(tab: ChatTab): string {
   
   tab.bubbles.forEach((bubble) => {
     // Add speaker
-    markdown += `### ${bubble.type === 'ai' ? `AI (${bubble.modelType})` : 'User'}\n\n`
-    
-    // Add selections if any
-    if (bubble.selections?.length) {
-      markdown += '**Selected Code:**\n\n'
-      bubble.selections.forEach((selection) => {
-        markdown += '```\n' + selection.text + '\n```\n\n'
-      })
-    }
+    markdown += `### ${bubble.type === 'ai' ? 'AI' : 'User'}\n\n`
     
     // Add message text or placeholder for empty AI messages
     if (bubble.text) {

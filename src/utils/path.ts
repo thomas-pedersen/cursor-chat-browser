@@ -9,8 +9,13 @@ export const expandTildePath = (inputPath: string): string => {
     return path.join(homePath, inputPath.slice(2))
   }
   
+  // If the path already contains the home directory, return as is
+  if (inputPath.startsWith(homePath)) {
+    return inputPath
+  }
+  
   // Handle paths that should start with the home directory but don't have ~/
-  if (inputPath.includes('Library/Application Support')) {
+  if (inputPath.includes('Library/Application Support') && !inputPath.startsWith(homePath)) {
     return path.join(homePath, inputPath)
   }
   
