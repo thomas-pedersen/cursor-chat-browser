@@ -7,13 +7,23 @@ export interface ChatBubble {
   text?: string;
   modelType?: string;
   selections?: Selection[];
+  timestamp?: number;
 }
 
 export interface ChatTab {
   id: string;
   title: string;
-  timestamp: string;
-  bubbles: ChatBubble[];
+  timestamp: number;
+  bubbles: {
+    type: 'user' | 'ai'
+    text: string
+    timestamp: number
+  }[];
+  codeBlockDiffs?: {
+    diffId: string
+    newModelDiffWrtV0: any[]
+    originalModelDiffWrtV0: any[]
+  }[];
 }
 
 export interface Workspace {

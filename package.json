@@ -1,6 +1,6 @@
 {
   "name": "cursor-chat-browser",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -35,13 +35,12 @@
     "refractor": "^4.8.1",
     "rehype-prism-plus": "^2.0.0",
     "remark-gfm": "^4.0.0",
-    "sqlite": "^5.1.1",
-    "sqlite3": "^5.1.7",
     "tailwind-merge": "^2.5.4",
     "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.15",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20.17.5",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",

@@ -2,8 +2,7 @@ import { NextResponse } from 'next/server'
 import path from 'path'
 import fs from 'fs/promises'
 import { existsSync } from 'fs'
-import sqlite3 from 'sqlite3'
-import { open } from 'sqlite'
+import Database from 'better-sqlite3'
 import { resolveWorkspacePath } from '@/utils/workspace-path'
 
 export async function GET(request: Request) {
@@ -18,6 +17,57 @@ export async function GET(request: Request) {
 
     const workspacePath = resolveWorkspacePath()
     const results = []
+
+    // Search global storage for chat data first
+    const globalDbPath = path.join(workspacePath, '..', 'globalStorage', 'state.vscdb')
+    if (existsSync(globalDbPath) && (type === 'all' || type === 'chat')) {
+      try {
+        const globalDb = new Database(globalDbPath, { readonly: true })
+        const globalChatResult = globalDb.prepare(`
+          SELECT value FROM ItemTable 
+          WHERE [key] = 'workbench.panel.aichat.view.aichat.chatdata'
+        `).get()
+
+        if (globalChatResult && (globalChatResult as any).value) {
+          const chatData = JSON.parse((globalChatResult as any).value)
+          for (const tab of chatData.tabs) {
+            let hasMatch = false
+            let matchingText = ''
+
+            // Search in chat title
+            if (tab.chatTitle?.toLowerCase().includes(query.toLowerCase())) {
+              hasMatch = true
+              matchingText = tab.chatTitle
+            }
+
+            // Search in bubbles
+            for (const bubble of tab.bubbles) {
+              if (bubble.text?.toLowerCase().includes(query.toLowerCase())) {
+                hasMatch = true
+                matchingText = bubble.text
+                break
+              }
+            }
+
+            if (hasMatch) {
+              results.push({
+                workspaceId: 'global',
+                workspaceFolder: undefined,
+                chatId: tab.tabId,
+                chatTitle: tab.chatTitle || `Chat ${tab.tabId?.substring(0, 8) || 'Untitled'}`,
+                timestamp: tab.lastSendTime || new Date().toISOString(),
+                matchingText,
+                type: 'chat'
+              })
+            }
+          }
+        }
+        globalDb.close()
+      } catch (error) {
+        console.error('Error searching global storage:', error)
+      }
+    }
+
     const entries = await fs.readdir(workspacePath, { withFileTypes: true })
 
     for (const entry of entries) {
@@ -36,20 +86,17 @@ export async function GET(request: Request) {
         }
 
         try {
-          const db = await open({
-            filename: dbPath,
-            driver: sqlite3.Database
-          })
+          const db = new Database(dbPath, { readonly: true })
 
           // Search chat logs if type is 'all' or 'chat'
           if (type === 'all' || type === 'chat') {
-            const chatResult = await db.get(`
+            const chatResult = db.prepare(`
               SELECT value FROM ItemTable 
               WHERE [key] = 'workbench.panel.aichat.view.aichat.chatdata'
-            `)
+            `).get()
 
-            if (chatResult?.value) {
-              const chatData = JSON.parse(chatResult.value)
+            if (chatResult && (chatResult as any).value) {
+              const chatData = JSON.parse((chatResult as any).value)
               for (const tab of chatData.tabs) {
                 let hasMatch = false
                 let matchingText = ''
@@ -86,13 +133,13 @@ export async function GET(request: Request) {
 
           // Search composer logs if type is 'all' or 'composer'
           if (type === 'all' || type === 'composer') {
-            const composerResult = await db.get(`
+            const composerResult = db.prepare(`
               SELECT value FROM ItemTable 
               WHERE [key] = 'composer.composerData'
-            `)
+            `).get()
 
-            if (composerResult?.value) {
-              const composerData = JSON.parse(composerResult.value)
+            if (composerResult && (composerResult as any).value) {
+              const composerData = JSON.parse((composerResult as any).value)
               for (const composer of composerData.allComposers) {
                 let hasMatch = false
                 let matchingText = ''
@@ -129,7 +176,7 @@ export async function GET(request: Request) {
             }
           }
 
-          await db.close()
+          db.close()
         } catch (error) {
           console.error(`Error processing workspace ${entry.name}:`, error)
         }
@@ -139,9 +186,9 @@ export async function GET(request: Request) {
     // Sort results by timestamp, newest first
     results.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
 
-    return NextResponse.json(results)
+    return NextResponse.json({ results })
   } catch (error) {
-    console.error('Failed to search:', error)
-    return NextResponse.json({ error: 'Failed to search' }, { status: 500 })
+    console.error('Search failed:', error)
+    return NextResponse.json({ error: 'Search failed', results: [] }, { status: 500 })
   }
 } 

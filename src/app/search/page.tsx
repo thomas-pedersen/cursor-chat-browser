@@ -33,7 +33,7 @@ export default function SearchPage() {
       try {
         const response = await fetch(`/api/search?q=${encodeURIComponent(query)}&type=${type}`)
         const data = await response.json()
-        setResults(data)
+        setResults(data.results || [])
       } catch (error) {
         console.error('Failed to search:', error)
       } finally {
@@ -101,7 +101,11 @@ export default function SearchPage() {
               </Badge>
             </div>
             <div className="text-sm mt-2">{result.matchingText}</div>
-            {result.workspaceFolder && (
+            {result.workspaceId === 'global' ? (
+              <div className="text-xs text-blue-600 mt-2">
+                🌐 Global Storage
+              </div>
+            ) : result.workspaceFolder && (
               <div className="text-xs text-muted-foreground mt-2">
                 {result.workspaceFolder}
               </div>

@@ -5,6 +5,7 @@ A web application for browsing and managing chat histories from the Cursor edito
 ## Features
 
 - 🔍 Browse and search all workspaces with Cursor chat history
+- 🌐 Support for both workspace-specific and global storage (newer Cursor versions)
 - 🤖 View both AI chat logs and Composer logs
 - 📁 Organize chats by workspace
 - 🔎 Full-text search with filters for chat/composer logs
@@ -53,6 +54,8 @@ The application automatically detects your Cursor workspace storage location bas
 - Linux (remote/SSH): `~/.cursor-server/data/User/workspaceStorage`
 
 If automatic detection fails, you can manually set the path in the Configuration page (⚙️).
+
+**Note:** Recent versions of Cursor have moved chat data storage from workspace-specific locations to global storage. This application now supports both storage methods to ensure compatibility with all Cursor versions.
 
 ## Usage
 

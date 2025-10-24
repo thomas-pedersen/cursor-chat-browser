@@ -130,7 +130,7 @@ export default function ConfigPage() {
         })
         
         setTimeout(() => {
-          router.push('/chat')
+          router.push('/')
         }, 1000)
       } else {
         setStatus({

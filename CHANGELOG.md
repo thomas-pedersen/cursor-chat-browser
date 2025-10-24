@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.2] - 2024-12-19
+
+### Added
+- Support for Cursor's new global storage system for chat data
+- Global storage detection and reading for newer chat threads
+- Visual indicators for global storage chats in logs and search results
+
+### Fixed
+- Chat logs not rendering for newer threads stored in global storage
+- Compatibility with Cursor's migration from workspace-specific to global chat storage
+- Search functionality now includes global storage chat data
+
 ## [0.2.1] - 2024-11-27
 
 ### Fixed
