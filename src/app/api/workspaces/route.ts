@@ -285,10 +285,12 @@ export async function GET() {
       
       // Get workspace name
       let workspaceName = `Project ${entry.name.slice(0, 8)}`
+      let projectPath: string = "(unknown path)"
       try {
         const workspaceData = JSON.parse(await fs.readFile(entry.workspaceJsonPath, 'utf-8'))
         if (workspaceData.folder) {
-          const folderName = workspaceData.folder.split('/').pop() || workspaceData.folder.split('\\').pop()
+          projectPath = String(workspaceData.folder).replace('file://', '')
+          const folderName = projectPath.split('/').pop() || projectPath.split('\\').pop()
           workspaceName = folderName || workspaceName
         }
       } catch (error) {
@@ -303,7 +305,7 @@ export async function GET() {
       projects.push({
         id: entry.name,
         name: workspaceName,
-        path: entry.workspaceJsonPath,
+        path: projectPath,
         conversationCount: conversationCount,
         lastModified: stats.mtime.toISOString()
       })
