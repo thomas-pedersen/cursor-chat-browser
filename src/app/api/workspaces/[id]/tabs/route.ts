@@ -228,6 +228,13 @@ function extractTextFromRichText(children: any[]): string {
   return text
 }
 
+function normalizeDbValue(value: unknown): string {
+  if (typeof value === 'string') return value
+  if (Buffer.isBuffer(value)) return value.toString('utf8')
+  if (value === null || value === undefined) return ''
+  return String(value)
+}
+
 // Unified function to determine which project a conversation belongs to (same as in workspaces route)
 function determineProjectForConversation(
   composerData: any, 
@@ -354,6 +361,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   let globalDb: any = null
+  const isGlobalWorkspace = params.id === 'global'
   
   try {
     const workspacePath = resolveWorkspacePath()
@@ -387,10 +395,12 @@ export async function GET(
       // Get all bubbleId entries for the actual message content
       const bubbleRows = globalDb.prepare("SELECT key, value FROM cursorDiskKV WHERE key LIKE 'bubbleId:%'").all()
       for (const rowUntyped of bubbleRows) {
-        const row = rowUntyped as { key: string, value: string }
+        const row = rowUntyped as { key: string, value: unknown }
         const bubbleId = row.key.split(':')[2]
         try {
-          const bubble = JSON.parse(row.value)
+          const bubbleRaw = normalizeDbValue(row.value)
+          if (!bubbleRaw) continue
+          const bubble = JSON.parse(bubbleRaw)
           if (bubble && typeof bubble === 'object') {
             bubbleMap[bubbleId] = bubble
           }
@@ -420,13 +430,15 @@ export async function GET(
       // messageRequestContext
       const messageRequestContextRows = globalDb.prepare("SELECT key, value FROM cursorDiskKV WHERE key LIKE 'messageRequestContext:%'").all()
       for (const rowUntyped of messageRequestContextRows) {
-        const row = rowUntyped as { key: string, value: string }
+        const row = rowUntyped as { key: string, value: unknown }
         const parts = row.key.split(':')
         if (parts.length >= 3) {
           const chatId = parts[1]
           const contextId = parts[2]
           try {
-            const context = JSON.parse(row.value)
+            const contextRaw = normalizeDbValue(row.value)
+            if (!contextRaw) continue
+            const context = JSON.parse(contextRaw)
             if (!messageRequestContextMap[chatId]) messageRequestContextMap[chatId] = []
             messageRequestContextMap[chatId].push({
               ...context,
@@ -441,12 +453,14 @@ export async function GET(
       // Create a map of composerId -> projectLayouts for efficient lookup
       const projectLayoutsMap: Record<string, string[]> = {}
       for (const rowUntyped of messageRequestContextRows) {
-        const row = rowUntyped as { key: string, value: string }
+        const row = rowUntyped as { key: string, value: unknown }
         const parts = row.key.split(':')
         if (parts.length >= 2) {
           const composerId = parts[1]
           try {
-            const context = JSON.parse(row.value)
+            const contextRaw = normalizeDbValue(row.value)
+            if (!contextRaw) continue
+            const context = JSON.parse(contextRaw)
             if (context.projectLayouts && Array.isArray(context.projectLayouts)) {
               if (!projectLayoutsMap[composerId]) {
                 projectLayoutsMap[composerId] = []
@@ -475,11 +489,13 @@ export async function GET(
       
       // Process each composerData entry and check if it belongs to this workspace
       for (const rowUntyped of composerRows) {
-        const row = rowUntyped as { key: string, value: string }
+        const row = rowUntyped as { key: string, value: unknown }
         const composerId = row.key.split(':')[1]
         
         try {
-          const composerData = JSON.parse(row.value)
+          const composerRaw = normalizeDbValue(row.value)
+          if (!composerRaw) continue
+          const composerData = JSON.parse(composerRaw)
           
           // Determine which project this conversation belongs to using unified logic
           const projectId = determineProjectForConversation(
@@ -491,8 +507,8 @@ export async function GET(
             bubbleMap
           )
           
-          // Only process conversations that belong to this specific workspace
-          if (projectId !== params.id) {
+          // Project pages show mapped conversations; global page shows unmatched conversations.
+          if ((!isGlobalWorkspace && projectId !== params.id) || (isGlobalWorkspace && Boolean(projectId))) {
             continue
           }
           
