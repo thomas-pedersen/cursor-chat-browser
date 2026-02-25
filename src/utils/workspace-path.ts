@@ -1,6 +1,7 @@
 import os from 'os'
 import path from 'path'
 import { execSync } from 'child_process'
+import { existsSync } from 'fs'
 import { expandTildePath } from './path'
 
 export function getDefaultWorkspacePath(): string {
@@ -26,10 +27,14 @@ export function getDefaultWorkspacePath(): string {
     case 'darwin':
       return path.join(home, 'Library/Application Support/Cursor/User/workspaceStorage')
     case 'linux':
-      if (isRemote) {
-        return path.join(home, '.cursor-server/data/User/workspaceStorage')
+      // Prefer local Cursor storage when present; SSH env vars can be set even on local sessions.
+      {
+        const localPath = path.join(home, '.config/Cursor/User/workspaceStorage')
+        const remotePath = path.join(home, '.cursor-server/data/User/workspaceStorage')
+        if (existsSync(localPath)) return localPath
+        if (isRemote || existsSync(remotePath)) return remotePath
+        return localPath
       }
-      return path.join(home, '.config/Cursor/User/workspaceStorage')
     default:
       return path.join(home, 'workspaceStorage')
   }

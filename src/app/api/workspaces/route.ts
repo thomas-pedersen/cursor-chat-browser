@@ -166,6 +166,7 @@ export async function GET() {
     
     // Initialize conversation map - only count from global storage
     const conversationMap: Record<string, ConversationData[]> = {}
+    let globalConversationCount = 0
     
     // Get conversations from global storage only
     const globalDbPath = path.join(workspacePath, '..', 'globalStorage', 'state.vscdb')
@@ -251,6 +252,7 @@ export async function GET() {
             
             // If no project found, skip this conversation
             if (!projectId) {
+              globalConversationCount += 1
               continue
             }
             
@@ -306,6 +308,17 @@ export async function GET() {
         path: entry.workspaceJsonPath,
         conversationCount: conversationCount,
         lastModified: stats.mtime.toISOString()
+      })
+    }
+
+    if (existsSync(globalDbPath)) {
+      const globalStats = await fs.stat(globalDbPath)
+      projects.push({
+        id: 'global',
+        name: 'Global Storage',
+        path: globalDbPath,
+        conversationCount: globalConversationCount,
+        lastModified: globalStats.mtime.toISOString()
       })
     }
     
