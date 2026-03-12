@@ -427,6 +427,9 @@ export async function GET(
           const contextId = parts[2]
           try {
             const context = JSON.parse(row.value)
+            if (!context || typeof context !== 'object') {
+              continue
+            }
             if (!messageRequestContextMap[chatId]) messageRequestContextMap[chatId] = []
             messageRequestContextMap[chatId].push({
               ...context,
@@ -447,7 +450,7 @@ export async function GET(
           const composerId = parts[1]
           try {
             const context = JSON.parse(row.value)
-            if (context.projectLayouts && Array.isArray(context.projectLayouts)) {
+            if (context && context.projectLayouts && Array.isArray(context.projectLayouts)) {
               if (!projectLayoutsMap[composerId]) {
                 projectLayoutsMap[composerId] = []
               }
