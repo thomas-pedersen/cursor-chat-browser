@@ -14,6 +14,7 @@ import {
 import { Loading } from "@/components/ui/loading"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { Info } from "lucide-react"
 
 interface Project {
@@ -75,12 +76,19 @@ export function WorkspaceList() {
                 {projectsWithConversations.map((project) => (
                   <TableRow key={project.id} className="hover:bg-accent/50">
                     <TableCell>
-                      <Link 
-                        href={`/workspace/${project.id}`}
-                        className="text-blue-600 hover:underline font-medium"
-                      >
-                        {project.name}
-                      </Link>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Link
+                            href={`/workspace/${project.id}`}
+                            className="text-blue-600 hover:underline font-medium"
+                          >
+                            {project.name}
+                          </Link>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-[60vw] break-all">
+                          {project.path}
+                        </TooltipContent>
+                      </Tooltip>
                     </TableCell>
                     <TableCell>
                       <span className="text-green-600 font-medium">
@@ -111,7 +119,7 @@ export function WorkspaceList() {
             <Alert className="mb-4">
               <Info className="h-4 w-4" />
               <AlertDescription>
-                These projects may appear empty due to folder relocation, Cursor updates, or conversations being stored in a different location. 
+                These projects may appear empty due to folder relocation, Cursor updates, or conversations being stored in a different location.
                 You can still click on a project to check if there are any legacy conversations available.
               </AlertDescription>
             </Alert>
@@ -127,12 +135,19 @@ export function WorkspaceList() {
                 {projectsWithoutConversations.map((project) => (
                   <TableRow key={project.id} className="hover:bg-accent/50">
                     <TableCell>
-                      <Link 
-                        href={`/workspace/${project.id}`}
-                        className="text-blue-600 hover:underline font-medium"
-                      >
-                        {project.name}
-                      </Link>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Link
+                            href={`/workspace/${project.id}`}
+                            className="text-blue-600 hover:underline font-medium"
+                          >
+                            {project.name}
+                          </Link>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-[60vw] break-all">
+                          {project.path}
+                        </TooltipContent>
+                      </Tooltip>
                     </TableCell>
                     <TableCell>
                       <span className="text-gray-400">0</span>
@@ -161,7 +176,7 @@ export function WorkspaceList() {
             <Alert>
               <Info className="h-4 w-4" />
               <AlertDescription>
-                This could be due to an incorrect workspace path configuration or no Cursor projects being available. 
+                This could be due to an incorrect workspace path configuration or no Cursor projects being available.
                 Check the configuration page to verify your Cursor workspace storage location.
               </AlertDescription>
             </Alert>
@@ -170,4 +185,4 @@ export function WorkspaceList() {
       )}
     </div>
   )
-} 
+}
