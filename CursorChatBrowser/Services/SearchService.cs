@@ -3,7 +3,7 @@ using CursorChatBrowser.Models;
 
 namespace CursorChatBrowser.Services;
 
-public class SearchService(WorkspacePathResolver pathResolver)
+public class SearchService(WorkspacePathResolver pathResolver, GlobalDataCache cache)
 {
     public async Task<List<SearchResult>> SearchAsync(string query, string type = "all")
     {
@@ -14,26 +14,9 @@ public class SearchService(WorkspacePathResolver pathResolver)
         if (!Directory.Exists(workspacePath))
             return results;
 
-        var dirs = Directory.GetDirectories(workspacePath);
-        var workspaceEntries = new List<WorkspaceEntry>();
-        foreach (var dir in dirs)
-        {
-            var name = Path.GetFileName(dir);
-            var wsJson = Path.Combine(dir, "workspace.json");
-            if (!File.Exists(wsJson)) continue;
-            var folder = "";
-            try
-            {
-                var json = await File.ReadAllTextAsync(wsJson);
-                using var doc = JsonDocument.Parse(json);
-                if (doc.RootElement.TryGetProperty("folder", out var f))
-                    folder = f.GetString() ?? "";
-            }
-            catch { }
-            workspaceEntries.Add(new WorkspaceEntry(name, wsJson, folder));
-        }
-
-        var projectNameToWsId = ProjectMapper.BuildProjectNameToWorkspaceIdMap(workspaceEntries);
+        await cache.EnsureIndexLoaded();
+        var workspaceEntries = cache.GetWorkspaceEntries();
+        var projectNameToWsId = cache.GetProjectNameToWsId();
 
         var globalDbPath = Path.Combine(workspacePath, "..", "globalStorage", "state.vscdb");
         if (File.Exists(globalDbPath))

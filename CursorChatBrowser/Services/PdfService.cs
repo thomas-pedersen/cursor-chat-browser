@@ -5,12 +5,10 @@ using QuestPDF.Infrastructure;
 
 namespace CursorChatBrowser.Services;
 
-public class PdfService
+public static class PdfService
 {
-    public byte[] GeneratePdf(ChatTab tab)
+    public static byte[] GeneratePdf(ChatTab tab)
     {
-        QuestPDF.Settings.License = LicenseType.Community;
-
         var document = Document.Create(container =>
         {
             container.Page(page =>

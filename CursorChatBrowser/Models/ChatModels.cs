@@ -18,14 +18,7 @@ public record ChatTab(
     string Id,
     string Title,
     long Timestamp,
-    List<ChatBubble> Bubbles,
-    List<CodeBlockDiff>? CodeBlockDiffs = null
-);
-
-public record CodeBlockDiff(
-    string? DiffId,
-    object? NewModelDiffWrtV0,
-    object? OriginalModelDiffWrtV0
+    List<ChatBubble> Bubbles
 );
 
 public record SearchResult(
@@ -67,6 +60,3 @@ public record ChatTabSummary(
     long Timestamp
 );
 
-public record ConversationResponse(
-    List<ChatTab> Tabs
-);

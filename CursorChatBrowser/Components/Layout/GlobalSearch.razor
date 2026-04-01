@@ -94,6 +94,8 @@
     </div>
 }
 
+@implements IDisposable
+
 @code {
     private bool _open;
     private string _query = "";
@@ -105,6 +107,12 @@
 
     private void Open() => _open = true;
     private void Close() { _open = false; _query = ""; _results.Clear(); }
+
+    public void Dispose()
+    {
+        _debounce?.Stop();
+        _debounce?.Dispose();
+    }
 
     private async Task OnQueryChanged()
     {

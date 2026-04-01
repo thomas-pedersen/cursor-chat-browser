@@ -2,7 +2,6 @@
 @rendermode InteractiveServer
 @inject WorkspacePathResolver PathResolver
 @inject WorkspaceService WorkspaceSvc
-@inject EnvironmentService EnvSvc
 @inject NavigationManager Nav
 
 <PageTitle>Configuration - Cursor Chat Browser</PageTitle>
@@ -44,14 +43,14 @@
     private void Save()
     {
         var expanded = WorkspacePathResolver.ExpandTildePath(_path);
-        if (!WorkspaceSvc.ValidatePath(expanded))
+        var count = WorkspaceSvc.CountWorkspaces(expanded);
+        if (count == 0)
         {
             _status = "No workspaces found in the specified location.";
             _statusOk = false;
             return;
         }
 
-        var count = WorkspaceSvc.CountWorkspaces(expanded);
         PathResolver.SetOverridePath(expanded);
         _status = $"Found {count} workspaces in the specified location.";
         _statusOk = true;

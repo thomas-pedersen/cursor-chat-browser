@@ -8,11 +8,11 @@ builder.Services.AddRazorComponents()
 
 builder.Services.AddSingleton<WorkspacePathResolver>();
 builder.Services.AddSingleton<GlobalDataCache>();
-builder.Services.AddSingleton<EnvironmentService>();
-builder.Services.AddSingleton<PdfService>();
 builder.Services.AddScoped<WorkspaceService>();
 builder.Services.AddScoped<ConversationService>();
 builder.Services.AddScoped<SearchService>();
+
+QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
 
 var app = builder.Build();
 

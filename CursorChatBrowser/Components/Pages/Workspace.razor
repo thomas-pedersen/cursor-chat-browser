@@ -1,7 +1,6 @@
 @page "/workspace/{Id}"
 @rendermode InteractiveServer
 @inject ConversationService ConvSvc
-@inject PdfService PdfSvc
 @inject IJSRuntime JS
 @inject NavigationManager Nav
 
@@ -198,7 +197,7 @@
     private async Task DownloadPdf()
     {
         if (_selectedDetail == null) return;
-        var bytes = PdfSvc.GeneratePdf(_selectedDetail);
+        var bytes = PdfService.GeneratePdf(_selectedDetail);
         var b64 = Convert.ToBase64String(bytes);
         await JS.InvokeVoidAsync("downloadInterop.download", $"{_selectedDetail.Title}.pdf", "application/pdf", b64);
     }

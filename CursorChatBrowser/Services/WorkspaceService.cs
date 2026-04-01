@@ -61,13 +61,6 @@ public class WorkspaceService(WorkspacePathResolver pathResolver, GlobalDataCach
         return new WorkspaceInfo(id, dbPath, folder, stats.LastWriteTimeUtc);
     }
 
-    public bool ValidatePath(string path)
-    {
-        if (!Directory.Exists(path)) return false;
-        return Directory.GetDirectories(path)
-            .Any(dir => File.Exists(Path.Combine(dir, "state.vscdb")));
-    }
-
     public int CountWorkspaces(string path)
     {
         if (!Directory.Exists(path)) return 0;

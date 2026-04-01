@@ -30,7 +30,7 @@ cd cursor-chat-browser
 dotnet run --project CursorChatBrowser
 ```
 
-Open [http://localhost:5141](http://localhost:5141) in your browser.
+Open [http://localhost:5169](http://localhost:5169) in your browser.
 
 ## Configuration
 
