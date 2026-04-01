@@ -1,0 +1,59 @@
+@page "/config"
+@rendermode InteractiveServer
+@inject WorkspacePathResolver PathResolver
+@inject WorkspaceService WorkspaceSvc
+@inject EnvironmentService EnvSvc
+@inject NavigationManager Nav
+
+<PageTitle>Configuration - Cursor Chat Browser</PageTitle>
+
+<div class="max-w-2xl mx-auto">
+    <h1 class="text-4xl font-bold mb-8">Configuration</h1>
+
+    <div class="space-y-6">
+        <div>
+            <label class="block text-sm font-medium mb-2">Cursor Workspace Path</label>
+            <input type="text" @bind="_path"
+                   class="w-full px-3 py-2 rounded-md border border-input bg-background text-foreground" />
+            <p class="text-sm text-muted-foreground mt-1">Path to your Cursor workspace storage directory</p>
+        </div>
+
+        @if (_status != null)
+        {
+            <div class="@($"p-4 rounded-md border text-sm {(_statusOk ? "border-green-500/50 bg-green-500/10 text-green-500" : "border-destructive/50 bg-destructive/10 text-destructive")}")">
+                @_status
+            </div>
+        }
+
+        <button @onclick="Save" class="px-4 py-2 rounded-md bg-primary text-primary-foreground hover:opacity-90 transition-opacity">
+            Save Configuration
+        </button>
+    </div>
+</div>
+
+@code {
+    private string _path = "";
+    private string? _status;
+    private bool _statusOk;
+
+    protected override void OnInitialized()
+    {
+        _path = PathResolver.GetOverridePath() ?? WorkspacePathResolver.GetDefaultPath();
+    }
+
+    private void Save()
+    {
+        var expanded = WorkspacePathResolver.ExpandTildePath(_path);
+        if (!WorkspaceSvc.ValidatePath(expanded))
+        {
+            _status = "No workspaces found in the specified location.";
+            _statusOk = false;
+            return;
+        }
+
+        var count = WorkspaceSvc.CountWorkspaces(expanded);
+        PathResolver.SetOverridePath(expanded);
+        _status = $"Found {count} workspaces in the specified location.";
+        _statusOk = true;
+    }
+}

@@ -1,0 +1,91 @@
+@page "/search"
+@rendermode InteractiveServer
+@inject SearchService SearchSvc
+@inject NavigationManager Nav
+
+<PageTitle>Search - Cursor Chat Browser</PageTitle>
+
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <h1 class="text-4xl font-bold">Search Results</h1>
+        <div class="flex gap-2">
+            @foreach (var f in new[] { "all", "chat", "composer" })
+            {
+                var label = f == "all" ? "All" : f == "chat" ? "Ask Logs" : "Agent Logs";
+                var active = _type == f;
+                <button @onclick="() => SetType(f)"
+                        class="@($"px-4 py-2 text-sm rounded-md border transition-colors {(active ? "bg-primary text-primary-foreground border-primary" : "border-input hover:bg-accent")}")">
+                    @label
+                </button>
+            }
+        </div>
+    </div>
+
+    @if (string.IsNullOrEmpty(_query))
+    {
+        <p class="text-muted-foreground">No search query provided</p>
+    }
+    else if (_loading)
+    {
+        <div class="flex items-center justify-center py-12">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <span class="ml-3 text-muted-foreground">Searching...</span>
+        </div>
+    }
+    else
+    {
+        <p class="text-muted-foreground">Found @_results.Count results for "@_query"</p>
+        <div class="space-y-4">
+            @foreach (var r in _results)
+            {
+                <div class="rounded-lg border border-border bg-card p-4">
+                    <div class="flex items-start justify-between mb-2">
+                        <div>
+                            <a href="/workspace/@r.WorkspaceId?tab=@r.ChatId&type=@r.Type" class="text-lg font-medium hover:underline text-blue-500">@r.ChatTitle</a>
+                            <div class="text-sm text-muted-foreground mt-1">
+                                @DateTimeOffset.FromUnixTimeMilliseconds(r.Timestamp).LocalDateTime.ToString("f")
+                            </div>
+                        </div>
+                        <span class="@($"text-xs px-2 py-0.5 rounded-full {(r.Type == "chat" ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground")}")">
+                            @(r.Type == "chat" ? "Ask Log" : "Agent Log")
+                        </span>
+                    </div>
+                    <div class="text-sm mt-2">@r.MatchingText</div>
+                    @if (r.WorkspaceFolder != null)
+                    {
+                        <div class="text-xs text-muted-foreground mt-2">@r.WorkspaceFolder</div>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [SupplyParameterFromQuery(Name = "q")] public string? _query { get; set; }
+    [SupplyParameterFromQuery(Name = "type")] public string? _type { get; set; }
+
+    private List<SearchResult> _results = new();
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _type ??= "all";
+        if (!string.IsNullOrEmpty(_query))
+        {
+            _results = await SearchSvc.SearchAsync(_query, _type);
+        }
+        _loading = false;
+    }
+
+    private async Task SetType(string type)
+    {
+        _type = type;
+        if (!string.IsNullOrEmpty(_query))
+        {
+            _loading = true;
+            _results = await SearchSvc.SearchAsync(_query, _type);
+            _loading = false;
+        }
+    }
+}

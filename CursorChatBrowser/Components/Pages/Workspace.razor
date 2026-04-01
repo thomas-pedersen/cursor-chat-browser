@@ -1,0 +1,205 @@
+@page "/workspace/{Id}"
+@rendermode InteractiveServer
+@inject ConversationService ConvSvc
+@inject PdfService PdfSvc
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+
+<PageTitle>Workspace - Cursor Chat Browser</PageTitle>
+
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <a href="/" class="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+            Back to Projects
+        </a>
+        @if (_selectedDetail != null)
+        {
+            <div class="flex gap-2">
+                <button @onclick="CopyMarkdown" class="inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded-md border border-input bg-background hover:bg-accent">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                    Copy All
+                </button>
+                <button @onclick="DownloadMd" class="inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded-md border border-input bg-background hover:bg-accent">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    Download .md
+                </button>
+                <button @onclick="DownloadHtml" class="inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded-md border border-input bg-background hover:bg-accent">
+                    Download .html
+                </button>
+                <button @onclick="DownloadPdf" class="inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded-md border border-input bg-background hover:bg-accent">
+                    Download .pdf
+                </button>
+            </div>
+        }
+    </div>
+
+    <div class="bg-muted/50 p-6 rounded-lg border border-border">
+        <h2 class="font-semibold mb-2">@Id</h2>
+        <p class="text-sm text-muted-foreground">@_tabs.Count conversations</p>
+    </div>
+
+    @if (_loadingList)
+    {
+        <div class="flex items-center justify-center py-12">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <span class="ml-3 text-muted-foreground">Loading conversations...</span>
+        </div>
+    }
+    else
+    {
+        <div class="grid grid-cols-12 gap-6">
+            <div class="col-span-3 space-y-4">
+                <h2 class="text-2xl font-bold">Conversations</h2>
+                <div class="space-y-2 max-h-[70vh] overflow-y-auto">
+                    @foreach (var tab in _tabs)
+                    {
+                        var isSelected = _selectedId == tab.Id;
+                        <button @onclick="() => SelectTab(tab.Id)"
+                                class="@($"w-full text-left px-4 py-3 rounded-md border transition-colors {(isSelected ? "bg-primary text-primary-foreground border-primary" : "border-input hover:bg-accent")}")">
+                            <div class="font-medium truncate text-sm">@(tab.Title ?? $"Chat {tab.Id[..Math.Min(8, tab.Id.Length)]}")</div>
+                            <div class="text-xs opacity-70 mt-1">@DateTimeOffset.FromUnixTimeMilliseconds(tab.Timestamp).LocalDateTime.ToString("g")</div>
+                        </button>
+                    }
+                </div>
+            </div>
+
+            <div class="col-span-9">
+                @if (_loadingDetail)
+                {
+                    <div class="flex items-center justify-center py-12">
+                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                        <span class="ml-3 text-muted-foreground">Loading conversation...</span>
+                    </div>
+                }
+                else if (_selectedDetail != null)
+                {
+                    <div class="rounded-lg border border-border bg-card p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-xl font-bold">@_selectedDetail.Title</h2>
+                            <span class="text-xs px-2 py-0.5 rounded-full bg-primary text-primary-foreground">Conversation</span>
+                        </div>
+                        <div class="space-y-4">
+                            @foreach (var bubble in _selectedDetail.Bubbles.Where(b => !string.IsNullOrWhiteSpace(b.Text)))
+                            {
+                                var isUser = bubble.Type == "user";
+                                <div class="@($"p-4 rounded-lg border {(isUser ? "bg-blue-500/5 border-blue-500/20" : "bg-muted/50 border-border")}")">
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <span class="@($"text-xs px-2 py-0.5 rounded-full {(isUser ? "bg-blue-500 text-white" : "bg-secondary text-secondary-foreground")}")">
+                                            @(isUser ? "You" : "AI")
+                                        </span>
+                                        <span class="text-xs text-muted-foreground">
+                                            @DateTimeOffset.FromUnixTimeMilliseconds(bubble.Timestamp).LocalDateTime.ToString("MMM d, yyyy h:mm tt")
+                                        </span>
+                                    </div>
+                                    <div class="prose dark:prose-invert max-w-none text-sm">
+                                        @((MarkupString)RenderMarkdown(bubble.Text))
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="rounded-lg border border-border bg-card p-6 text-center text-muted-foreground">
+                        No conversation selected
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string Id { get; set; } = "";
+    [SupplyParameterFromQuery(Name = "tab")] public string? InitialTab { get; set; }
+
+    private List<ChatTabSummary> _tabs = [];
+    private string? _selectedId;
+    private ChatTab? _selectedDetail;
+    private bool _loadingList = true;
+    private bool _loadingDetail;
+
+    // Avoids re-querying SQLite when switching between previously viewed conversations
+    private readonly Dictionary<string, ChatTab> _detailCache = new();
+
+    private static readonly Markdig.MarkdownPipeline _mdPipeline =
+        new Markdig.MarkdownPipelineBuilder().Build();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _tabs = await ConvSvc.GetConversationListAsync(Id);
+        _loadingList = false;
+
+        var initialId = InitialTab ?? _tabs.FirstOrDefault()?.Id;
+        if (initialId != null)
+            await LoadConversation(initialId);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        try { await JS.InvokeVoidAsync("highlightCode"); } catch { }
+    }
+
+    private async Task SelectTab(string id)
+    {
+        if (id == _selectedId) return;
+        await LoadConversation(id);
+        try { await JS.InvokeVoidAsync("highlightCode"); } catch { }
+    }
+
+    private async Task LoadConversation(string id)
+    {
+        _selectedId = id;
+
+        if (_detailCache.TryGetValue(id, out var cached))
+        {
+            _selectedDetail = cached;
+            return;
+        }
+
+        _selectedDetail = null;
+        _loadingDetail = true;
+
+        _selectedDetail = await Task.Run(() => ConvSvc.GetConversationDetail(id));
+        _loadingDetail = false;
+
+        if (_selectedDetail != null)
+            _detailCache[id] = _selectedDetail;
+    }
+
+    private string RenderMarkdown(string md) => Markdig.Markdown.ToHtml(md, _mdPipeline);
+
+    private async Task CopyMarkdown()
+    {
+        if (_selectedDetail == null) return;
+        var md = DownloadService.ConvertToMarkdown(_selectedDetail);
+        await JS.InvokeVoidAsync("clipboardInterop.copy", md);
+    }
+
+    private async Task DownloadMd()
+    {
+        if (_selectedDetail == null) return;
+        var content = DownloadService.ConvertToMarkdown(_selectedDetail);
+        var b64 = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(content));
+        await JS.InvokeVoidAsync("downloadInterop.download", $"{_selectedDetail.Title}.md", "text/markdown", b64);
+    }
+
+    private async Task DownloadHtml()
+    {
+        if (_selectedDetail == null) return;
+        var content = DownloadService.ConvertToHtml(_selectedDetail);
+        var b64 = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(content));
+        await JS.InvokeVoidAsync("downloadInterop.download", $"{_selectedDetail.Title}.html", "text/html", b64);
+    }
+
+    private async Task DownloadPdf()
+    {
+        if (_selectedDetail == null) return;
+        var bytes = PdfSvc.GeneratePdf(_selectedDetail);
+        var b64 = Convert.ToBase64String(bytes);
+        await JS.InvokeVoidAsync("downloadInterop.download", $"{_selectedDetail.Title}.pdf", "application/pdf", b64);
+    }
+}

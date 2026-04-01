@@ -1,0 +1,11 @@
+/* Minimal prism overrides for dark theme */
+pre[class*="language-"] {
+    background: #1e1e1e !important;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    overflow-x: auto;
+    font-size: 0.875rem;
+}
+code[class*="language-"] {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}

@@ -2,103 +2,80 @@
 
 A web application for browsing and managing chat histories from the Cursor editor's AI chat feature. View, search, and export your AI conversations in various formats.
 
+This is a C#/.NET 10 Blazor port of the original [cursor-chat-browser](https://github.com/thomas-pedersen/cursor-chat-browser) (Next.js/TypeScript).
+
 ## Features
 
-- 🔍 Browse and search all workspaces with Cursor chat history
-- 🌐 Support for both workspace-specific and global storage (newer Cursor versions)
-- 🤖 View both AI chat logs and Composer logs
-- 📁 Organize chats by workspace
-- 🔎 Full-text search with filters for chat/composer logs
-- 📱 Responsive design with dark/light mode support
-- ⬇️ Export chats as:
-  - Markdown files
-  - HTML documents (with syntax highlighting)
-  - PDF documents
-- 🎨 Syntax highlighted code blocks
-- 📌 Bookmarkable chat URLs
-- ⚙️ Automatic workspace path detection
+- Browse and search all workspaces with Cursor chat history
+- Support for both workspace-specific and global storage (newer Cursor versions)
+- View both AI chat logs and Composer logs
+- Organize chats by workspace
+- Full-text search across all conversations
+- Dark/light mode with system preference detection
+- Export chats as Markdown, HTML (with syntax highlighting), or PDF
+- Syntax-highlighted code blocks via Prism.js
+- Bookmarkable chat URLs
+- Automatic workspace path detection (Windows, macOS, Linux, WSL, SSH remote)
 
 ## Prerequisites
 
-- Node.js 18+ and npm
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
 - A Cursor editor installation with chat history
 
-## Installation
+## Quick Start
 
-1. Clone the repository:
-  ```bash
-  git clone https://github.com/thomas-pedersen/cursor-chat-browser.git
-  cd cursor-chat-browser
-  ```
+```bash
+git clone https://github.com/thomas-pedersen/cursor-chat-browser.git
+cd cursor-chat-browser
+dotnet run --project CursorChatBrowser
+```
 
-2. Install dependencies:
-  ```bash
-  npm install
-  ```
-
-3. Start the development server:
-  ```bash
-  npm run dev
-  ```
-
-4. Open [http://localhost:3000](http://localhost:3000) in your browser
+Open [http://localhost:5141](http://localhost:5141) in your browser.
 
 ## Configuration
 
-The application automatically detects your Cursor workspace storage location based on your operating system:
+The application automatically detects your Cursor workspace storage location:
 
-- Windows: `%APPDATA%\Cursor\User\workspaceStorage`
-- WSL2: `/mnt/c/Users/<USERNAME>/AppData/Roaming/Cursor/User/workspaceStorage`
-- macOS: `~/Library/Application Support/Cursor/User/workspaceStorage`
-- Linux: `~/.config/Cursor/User/workspaceStorage`
-- Linux (remote/SSH): `~/.cursor-server/data/User/workspaceStorage`
+| OS | Default Path |
+|----|-------------|
+| Windows | `%APPDATA%\Cursor\User\workspaceStorage` |
+| WSL2 | `/mnt/c/Users/<USERNAME>/AppData/Roaming/Cursor/User/workspaceStorage` |
+| macOS | `~/Library/Application Support/Cursor/User/workspaceStorage` |
+| Linux | `~/.config/Cursor/User/workspaceStorage` |
+| Linux (remote/SSH) | `~/.cursor-server/data/User/workspaceStorage` |
 
-If automatic detection fails, you can manually set the path in the Configuration page (⚙️).
+If automatic detection fails, set the path manually on the Configuration page.
 
-**Note:** Recent versions of Cursor have moved chat data storage from workspace-specific locations to global storage. This application now supports both storage methods to ensure compatibility with all Cursor versions.
+## Architecture
 
-## Usage
+The app is a **Blazor Web App with Interactive Server rendering**. All data access (SQLite reads of Cursor's `state.vscdb`) happens server-side with results pushed to the browser over SignalR.
 
-### Browsing Logs
-- View all workspaces on the home page
-- Browse AI chat logs by workspace
-- Access Composer logs from the navigation menu
-- Navigate between different chat tabs within a workspace
-- View combined logs with type indicators
-- See chat and composer counts per workspace
+```
+Browser  ──SignalR──▶  Blazor Server
+                         ├── WorkspaceService   ─┐
+                         ├── ConversationService  ├──▶ state.vscdb (SQLite, read-only)
+                         ├── SearchService       ─┘
+                         └── PdfService (QuestPDF)
+```
 
-### Searching
-- Use the search bar in the navigation to search across all logs
-- Filter results by chat logs, composer logs, or both
-- Search results show:
-  - Type badge (Chat/Composer)
-  - Matching text snippets
-  - Workspace location
-  - Title
-  - Timestamp
+Key libraries:
+- **Microsoft.Data.Sqlite** -- SQLite access (replaces better-sqlite3)
+- **Markdig** -- Markdown rendering
+- **QuestPDF** -- PDF generation
+- **Tailwind CSS** (CDN) -- Styling, preserving the original UI design
 
-### Exporting
-Each log can be exported as:
-- Markdown: Plain text with code blocks
-- HTML: Styled document with syntax highlighting
-- PDF: Formatted document suitable for sharing
+### Performance
+
+A `GlobalDataCache` singleton caches the database index (composer-to-project mappings, tab metadata) and only reloads when the underlying `state.vscdb` file changes. Conversation content loads lazily -- the sidebar renders instantly from cached metadata, and full bubble content loads on demand for the selected conversation through a single SQLite connection.
 
 ## Development
 
-Built with:
-- Next.js 14 (App Router)
-- TypeScript
-- Tailwind CSS
-- shadcn/ui components
-- SQLite for reading Cursor's chat database
+```bash
+cd CursorChatBrowser
+dotnet watch
+```
 
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+This enables hot reload for Razor components and C# code changes.
 
 ## Changelog
 

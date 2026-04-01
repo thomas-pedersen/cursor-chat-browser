@@ -1,0 +1,23 @@
+@page "/Error"
+@using System.Diagnostics
+
+<PageTitle>Error</PageTitle>
+
+<div class="max-w-2xl mx-auto py-12 text-center">
+    <h1 class="text-4xl font-bold text-destructive mb-4">Error</h1>
+    <h2 class="text-xl text-muted-foreground mb-6">An error occurred while processing your request.</h2>
+
+    @if (ShowRequestId)
+    {
+        <p class="text-sm text-muted-foreground">Request ID: <code>@RequestId</code></p>
+    }
+</div>
+
+@code {
+    [CascadingParameter] private HttpContext? HttpContext { get; set; }
+    private string? RequestId { get; set; }
+    private bool ShowRequestId => !string.IsNullOrEmpty(RequestId);
+
+    protected override void OnInitialized() =>
+        RequestId = Activity.Current?.Id ?? HttpContext?.TraceIdentifier;
+}

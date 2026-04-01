@@ -1,52 +1,55 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# === OS ===
+.DS_Store
+Thumbs.db
+Desktop.ini
 
-# dependencies
+# === Node.js (original project, kept for reference) ===
 /node_modules
 /.pnp
 .pnp.js
 .yarn/install-state.gz
-
-# testing
 /coverage
-
-# next.js
 /.next/
 /out/
-
-# production
 /build
-
-# misc
-.DS_Store
-*.pem
-
-# debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-
-# local env files
-.env*.local
-
-# vercel
-.vercel
-
-# typescript
 *.tsbuildinfo
 next-env.d.ts
 
-# cursor chat browser specific
-# sqlite databases
+# === .NET ===
+**/bin/
+**/obj/
+**/publish/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+*.nupkg
+project.nuget.cache
+
+# === IDE ===
+.idea/
+*.swp
+*~
+
+# === Environment / secrets ===
+.env*.local
+*.pem
+appsettings.Development.json
+
+# === Vercel ===
+.vercel
+
+# === Cursor chat browser specific ===
 *.vscdb
 *.vscdb-shm
 *.vscdb-wal
-
-# data logs and workspace storage
 workspaceStorage/
 state.vscdb*
 workspace.json
-
-# cursor data files
 aichat.data.json
 composer_data.json
 
