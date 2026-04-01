@@ -43,3 +43,17 @@
     --destructive-foreground: 210 40% 98%;
     --ring: 212.7 26.8% 83.9%;
 }
+
+/* Ensure code blocks inside chat bubbles scroll rather than overflow */
+.prose pre {
+    overflow-x: auto;
+    max-width: 100%;
+}
+
+.prose code {
+    word-break: break-all;
+}
+
+.prose pre code {
+    word-break: normal;
+}

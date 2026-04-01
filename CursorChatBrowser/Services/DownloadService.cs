@@ -21,11 +21,13 @@ public static class DownloadService
         return md;
     }
 
+    private static readonly MarkdownPipeline _pipeline =
+        new MarkdownPipelineBuilder().DisableHtml().Build();
+
     public static string ConvertToHtml(ChatTab tab)
     {
         var markdown = ConvertToMarkdown(tab);
-        var pipeline = new MarkdownPipelineBuilder().Build();
-        var body = Markdown.ToHtml(markdown, pipeline);
+        var body = Markdown.ToHtml(markdown, _pipeline);
 
         return "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><title>"
             + System.Net.WebUtility.HtmlEncode(tab.Title)

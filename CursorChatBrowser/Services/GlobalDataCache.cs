@@ -29,6 +29,7 @@ public class GlobalDataCache(WorkspacePathResolver pathResolver)
     private List<WorkspaceEntry> _workspaceEntries = [];
     private Dictionary<string, ChatTabSummary> _tabSummaries = new();
     private Dictionary<string, List<JsonElement>> _messageContextByComposer = new();
+    private Dictionary<string, string> _wsIdToCanonical = new();
 
     public bool IsStale
     {
@@ -85,6 +86,20 @@ public class GlobalDataCache(WorkspacePathResolver pathResolver)
             wsEntries.Add(new WorkspaceEntry(name, wsJson, folder));
         }
 
+        // Canonicalize workspace IDs: when multiple workspace storage dirs
+        // point to the same physical folder, pick one canonical ID so
+        // conversations merge into a single project on the home page.
+        var wsIdToCanonical = new Dictionary<string, string>();
+        var folderGroups = wsEntries
+            .Where(e => !string.IsNullOrEmpty(e.Folder))
+            .GroupBy(e => ProjectMapper.NormalizePath(e.Folder), StringComparer.OrdinalIgnoreCase);
+        foreach (var group in folderGroups)
+        {
+            var canonical = group.First().Name;
+            foreach (var entry in group)
+                wsIdToCanonical[entry.Name] = canonical;
+        }
+
         var pnToWsId = ProjectMapper.BuildProjectNameToWorkspaceIdMap(wsEntries);
 
         var msgCtxRows = SqliteHelper.QueryKv(dbPath,
@@ -128,6 +143,8 @@ public class GlobalDataCache(WorkspacePathResolver pathResolver)
                     new Dictionary<string, JsonElement>());
 
                 if (projectId == null) continue;
+                if (wsIdToCanonical.TryGetValue(projectId, out var canonical))
+                    projectId = canonical;
                 idToProject[composerId] = projectId;
                 counts.TryAdd(projectId, 0);
                 counts[projectId]++;
@@ -164,6 +181,7 @@ public class GlobalDataCache(WorkspacePathResolver pathResolver)
             _projectConversationCounts = counts;
             _tabSummaries = tabSummaries;
             _messageContextByComposer = msgCtxByComposer;
+            _wsIdToCanonical = wsIdToCanonical;
         }
     }
 
@@ -172,6 +190,7 @@ public class GlobalDataCache(WorkspacePathResolver pathResolver)
     public Dictionary<string, string> GetComposerIdToProjectId() { lock (_lock) return _composerIdToProjectId; }
     public Dictionary<string, List<string>> GetProjectLayoutsMap() { lock (_lock) return _projectLayoutsMap; }
     public Dictionary<string, string> GetProjectNameToWsId() { lock (_lock) return _projectNameToWsId; }
+    public Dictionary<string, string> GetWsIdToCanonical() { lock (_lock) return _wsIdToCanonical; }
 
     /// <summary>
     /// Returns lightweight tab summaries for the sidebar, sorted by most recent first.

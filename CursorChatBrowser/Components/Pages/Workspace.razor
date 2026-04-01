@@ -82,7 +82,7 @@
                             @foreach (var bubble in _selectedDetail.Bubbles.Where(b => !string.IsNullOrWhiteSpace(b.Text)))
                             {
                                 var isUser = bubble.Type == "user";
-                                <div class="@($"p-4 rounded-lg border {(isUser ? "bg-blue-500/5 border-blue-500/20" : "bg-muted/50 border-border")}")">
+                                <div class="@($"p-4 rounded-lg border overflow-hidden {(isUser ? "bg-blue-500/5 border-blue-500/20" : "bg-muted/50 border-border")}")">
                                     <div class="flex items-center gap-2 mb-2">
                                         <span class="@($"text-xs px-2 py-0.5 rounded-full {(isUser ? "bg-blue-500 text-white" : "bg-secondary text-secondary-foreground")}")">
                                             @(isUser ? "You" : "AI")
@@ -91,7 +91,7 @@
                                             @DateTimeOffset.FromUnixTimeMilliseconds(bubble.Timestamp).LocalDateTime.ToString("MMM d, yyyy h:mm tt")
                                         </span>
                                     </div>
-                                    <div class="prose dark:prose-invert max-w-none text-sm">
+                                    <div class="prose dark:prose-invert max-w-none text-sm break-words overflow-x-auto">
                                         @((MarkupString)RenderMarkdown(bubble.Text))
                                     </div>
                                 </div>
@@ -124,7 +124,7 @@
     private readonly Dictionary<string, ChatTab> _detailCache = new();
 
     private static readonly Markdig.MarkdownPipeline _mdPipeline =
-        new Markdig.MarkdownPipelineBuilder().Build();
+        new Markdig.MarkdownPipelineBuilder().DisableHtml().Build();
 
     protected override async Task OnInitializedAsync()
     {

@@ -60,36 +60,45 @@
         @if (withoutConversations.Any())
         {
             <div class="rounded-lg border border-border bg-card">
-                <div class="p-6 border-b border-border">
-                    <h2 class="text-xl font-semibold">Projects without Conversations</h2>
-                    <p class="text-sm text-muted-foreground">@withoutConversations.Count project@(withoutConversations.Count != 1 ? "s" : "") with no chat history found</p>
-                </div>
-                <div class="p-4">
-                    <div class="p-4 mb-4 rounded-md border border-border bg-muted/50 text-sm text-muted-foreground">
-                        These projects may appear empty due to folder relocation, Cursor updates, or conversations being stored in a different location.
+                <button @onclick="() => _emptyExpanded = !_emptyExpanded"
+                        class="w-full p-6 flex items-center justify-between text-left hover:bg-accent/50 transition-colors rounded-t-lg">
+                    <div>
+                        <h2 class="text-xl font-semibold">Projects without Conversations</h2>
+                        <p class="text-sm text-muted-foreground">@withoutConversations.Count project@(withoutConversations.Count != 1 ? "s" : "") with no chat history found</p>
                     </div>
-                    <table class="w-full">
-                        <thead>
-                            <tr class="border-b border-border text-left">
-                                <th class="p-3 text-sm font-medium text-muted-foreground">Project</th>
-                                <th class="p-3 text-sm font-medium text-muted-foreground">Conversations</th>
-                                <th class="p-3 text-sm font-medium text-muted-foreground">Last Modified</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var p in withoutConversations)
-                            {
-                                <tr class="border-b border-border hover:bg-accent/50 transition-colors">
-                                    <td class="p-3">
-                                        <a href="/workspace/@p.Id" class="text-blue-500 hover:underline font-medium" title="@p.Path">@p.Name</a>
-                                    </td>
-                                    <td class="p-3 text-muted-foreground">0</td>
-                                    <td class="p-3 text-muted-foreground">@p.LastModified.ToLocalTime().ToString("MMM d, yyyy h:mm tt")</td>
+                    <svg class="@($"w-5 h-5 text-muted-foreground transition-transform {(_emptyExpanded ? "rotate-180" : "")}")" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </button>
+                @if (_emptyExpanded)
+                {
+                    <div class="p-4 border-t border-border">
+                        <div class="p-4 mb-4 rounded-md border border-border bg-muted/50 text-sm text-muted-foreground">
+                            These projects may appear empty due to folder relocation, Cursor updates, or conversations being stored in a different location.
+                        </div>
+                        <table class="w-full">
+                            <thead>
+                                <tr class="border-b border-border text-left">
+                                    <th class="p-3 text-sm font-medium text-muted-foreground">Project</th>
+                                    <th class="p-3 text-sm font-medium text-muted-foreground">Conversations</th>
+                                    <th class="p-3 text-sm font-medium text-muted-foreground">Last Modified</th>
                                 </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
+                            </thead>
+                            <tbody>
+                                @foreach (var p in withoutConversations)
+                                {
+                                    <tr class="border-b border-border hover:bg-accent/50 transition-colors">
+                                        <td class="p-3">
+                                            <a href="/workspace/@p.Id" class="text-blue-500 hover:underline font-medium" title="@p.Path">@p.Name</a>
+                                        </td>
+                                        <td class="p-3 text-muted-foreground">0</td>
+                                        <td class="p-3 text-muted-foreground">@p.LastModified.ToLocalTime().ToString("MMM d, yyyy h:mm tt")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
             </div>
         }
 
@@ -107,6 +116,7 @@
 @code {
     private List<Project> _projects = new();
     private bool _loading = true;
+    private bool _emptyExpanded;
 
     protected override async Task OnInitializedAsync()
     {

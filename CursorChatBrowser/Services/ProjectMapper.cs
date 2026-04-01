@@ -5,19 +5,30 @@ namespace CursorChatBrowser.Services;
 
 /// <summary>
 /// Shared logic for mapping conversations to workspace projects.
-/// Ported from the duplicated determineProjectForConversation / getProjectFromFilePath
-/// functions in the TypeScript codebase.
 /// </summary>
 public static class ProjectMapper
 {
+    /// <summary>
+    /// Normalizes a file URI or path to a consistent forward-slash format
+    /// with percent-encoding resolved, suitable for prefix matching.
+    /// </summary>
+    internal static string NormalizePath(string path)
+    {
+        var result = path.Replace("file:///", "").Replace("file://", "");
+        result = Uri.UnescapeDataString(result);
+        if (result.Length > 2 && result[0] == '/' && result[2] == ':')
+            result = result[1..];
+        return result.Replace('\\', '/').TrimEnd('/');
+    }
+
     public static Dictionary<string, string> BuildProjectNameToWorkspaceIdMap(List<WorkspaceEntry> entries)
     {
         var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var entry in entries)
         {
             if (string.IsNullOrEmpty(entry.Folder)) continue;
-            var folder = entry.Folder.Replace("file://", "");
-            var folderName = folder.Split('/', '\\').LastOrDefault(s => !string.IsNullOrEmpty(s));
+            var folder = NormalizePath(entry.Folder);
+            var folderName = folder.Split('/').LastOrDefault(s => !string.IsNullOrEmpty(s));
             if (!string.IsNullOrEmpty(folderName))
                 map.TryAdd(folderName, entry.Name);
         }
@@ -45,11 +56,8 @@ public static class ProjectMapper
         {
             foreach (var file in ncf.EnumerateArray())
             {
-                if (file.TryGetProperty("uri", out var uri) && uri.TryGetProperty("path", out var p))
-                {
-                    var pid = GetProjectFromFilePath(p.GetString()!, workspaceEntries);
-                    if (pid != null) return pid;
-                }
+                var pid = MatchUriElement(file, workspaceEntries);
+                if (pid != null) return pid;
             }
         }
 
@@ -57,8 +65,7 @@ public static class ProjectMapper
         {
             foreach (var prop in cbd.EnumerateObject())
             {
-                var filePath = prop.Name.Replace("file://", "");
-                var pid = GetProjectFromFilePath(filePath, workspaceEntries);
+                var pid = GetProjectFromFilePath(prop.Name, workspaceEntries);
                 if (pid != null) return pid;
             }
         }
@@ -75,6 +82,15 @@ public static class ProjectMapper
                 if (TryMatchUrisInBubble(bubble, "attachedFileCodeChunksUris", workspaceEntries, out var pid2)) return pid2;
                 if (TryMatchFileSelectionsInBubble(bubble, workspaceEntries, out var pid3)) return pid3;
             }
+        }
+
+        // Newer Cursor versions store attached file/selection context at the
+        // composerData level rather than per-bubble.
+        if (composerData.TryGetProperty("context", out var ctx))
+        {
+            if (TryMatchUriArray(ctx, "fileSelections", workspaceEntries, out var pid4)) return pid4;
+            if (TryMatchUriArray(ctx, "selections", workspaceEntries, out var pid5)) return pid5;
+            if (TryMatchUriArray(ctx, "folderSelections", workspaceEntries, out var pid6)) return pid6;
         }
 
         return null;
@@ -117,15 +133,53 @@ public static class ProjectMapper
 
     private static string? GetProjectFromFilePath(string filePath, List<WorkspaceEntry> entries)
     {
-        var normalized = filePath.Replace("file://", "");
+        var normalized = NormalizePath(filePath);
         foreach (var entry in entries)
         {
             if (string.IsNullOrEmpty(entry.Folder)) continue;
-            var wsPath = entry.Folder.Replace("file://", "");
+            var wsPath = NormalizePath(entry.Folder);
             if (normalized.StartsWith(wsPath, StringComparison.OrdinalIgnoreCase))
                 return entry.Name;
         }
         return null;
+    }
+
+    /// <summary>
+    /// Tries to extract a file path from a JSON element that has a uri.path
+    /// or uri.fsPath property and match it to a workspace.
+    /// </summary>
+    private static string? MatchUriElement(JsonElement element, List<WorkspaceEntry> entries)
+    {
+        if (element.TryGetProperty("uri", out var uri))
+        {
+            if (uri.TryGetProperty("path", out var p))
+            {
+                var pid = GetProjectFromFilePath(p.GetString()!, entries);
+                if (pid != null) return pid;
+            }
+            if (uri.TryGetProperty("fsPath", out var fp))
+            {
+                var pid = GetProjectFromFilePath(fp.GetString()!, entries);
+                if (pid != null) return pid;
+            }
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Matches an array of objects with uri.path or uri.fsPath to a workspace.
+    /// Used for context.fileSelections, context.selections, context.folderSelections.
+    /// </summary>
+    private static bool TryMatchUriArray(JsonElement parent, string prop, List<WorkspaceEntry> entries, out string? projectId)
+    {
+        projectId = null;
+        if (!parent.TryGetProperty(prop, out var arr) || arr.ValueKind != JsonValueKind.Array) return false;
+        foreach (var item in arr.EnumerateArray())
+        {
+            projectId = MatchUriElement(item, entries);
+            if (projectId != null) return true;
+        }
+        return false;
     }
 
     private static bool TryMatchFilesInBubble(JsonElement bubble, string prop, List<WorkspaceEntry> entries, out string? projectId)
@@ -160,15 +214,6 @@ public static class ProjectMapper
     {
         projectId = null;
         if (!bubble.TryGetProperty("context", out var ctx)) return false;
-        if (!ctx.TryGetProperty("fileSelections", out var sels) || sels.ValueKind != JsonValueKind.Array) return false;
-        foreach (var sel in sels.EnumerateArray())
-        {
-            if (sel.TryGetProperty("uri", out var uri) && uri.TryGetProperty("path", out var p))
-            {
-                projectId = GetProjectFromFilePath(p.GetString()!, entries);
-                if (projectId != null) return true;
-            }
-        }
-        return false;
+        return TryMatchUriArray(ctx, "fileSelections", entries, out projectId);
     }
 }
