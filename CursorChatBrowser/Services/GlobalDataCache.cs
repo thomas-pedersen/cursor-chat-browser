@@ -18,8 +18,11 @@ public record ConversationRawData(
 /// </summary>
 public class GlobalDataCache(WorkspacePathResolver pathResolver)
 {
+    private static readonly TimeSpan RefreshInterval = TimeSpan.FromSeconds(30);
+
     private readonly Lock _lock = new();
     private DateTime _lastModified;
+    private DateTime _lastRefresh;
     private string? _cachedDbPath;
 
     private Dictionary<string, string> _composerIdToProjectId = new();
@@ -63,6 +66,11 @@ public class GlobalDataCache(WorkspacePathResolver pathResolver)
         lock (_lock)
         {
             if (_cachedDbPath == dbPath && _lastModified == mod)
+                return;
+
+            // Prevent re-scanning more frequently than RefreshInterval even when
+            // the DB is being actively written to (e.g., during a live Cursor session).
+            if (_cachedDbPath == dbPath && DateTime.UtcNow - _lastRefresh < RefreshInterval)
                 return;
         }
 
@@ -174,6 +182,7 @@ public class GlobalDataCache(WorkspacePathResolver pathResolver)
         {
             _cachedDbPath = dbPath;
             _lastModified = mod;
+            _lastRefresh = DateTime.UtcNow;
             _workspaceEntries = wsEntries;
             _projectNameToWsId = pnToWsId;
             _projectLayoutsMap = plMap;
